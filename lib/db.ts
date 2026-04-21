@@ -6,22 +6,22 @@
 // (PostgreSQL, MySQL, Supabase, etc.)
 
 import type {
-  User,
   Client,
-  Service,
-  ServiceType,
-  Reminder,
-  Setting,
-  ServiceWithClient,
-  ReminderWithClient,
   CreateClientInput,
-  UpdateClientInput,
-  CreateServiceInput,
-  UpdateServiceInput,
   CreateReminderInput,
-  UpdateReminderInput,
+  CreateServiceInput,
   DashboardStats,
   PaginatedResponse,
+  Reminder,
+  ReminderWithClient,
+  Service,
+  ServiceType,
+  ServiceWithClient,
+  Setting,
+  UpdateClientInput,
+  UpdateReminderInput,
+  UpdateServiceInput,
+  User,
 } from './types'
 
 // =====================================================
@@ -81,7 +81,6 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  // TODO: Reemplazar con query real
   const {data, error} = await supabase.from('users').select('*').eq('id', id).single()
   if (error || !data) {
     return null
@@ -98,7 +97,6 @@ export async function getUserById(id: string): Promise<User | null> {
 }
 
 export async function getUserPasswordHash(email: string): Promise<string | null> {
-  // TODO: Reemplazar con query real
   const {data, error} = await supabase.from('users').select('password_hash').eq('email', email).single()
   if (error || !data) {
     return null
@@ -111,8 +109,18 @@ export async function getUserPasswordHash(email: string): Promise<string | null>
 // =====================================================
 
 export async function getClients(page = 1, limit = 10, search?: string): Promise<PaginatedResponse<Client>> {
-  // TODO: Reemplazar con query real con paginación
-  let filtered = [...clients]
+  let filtered = await supabase
+    .from('clients')
+    .select('*')
+    .order('name', {ascending: true})
+    .range(page - 1, page * limit - 1)
+    .then(({data, error}) => {
+      if (error) {
+        console.error("Error al obtener clientes de Supabase:", error.message, error.details);
+        return [];
+      }
+      return data || [];
+    })
 
   if (search) {
     const searchLower = search.toLowerCase()
@@ -127,9 +135,8 @@ export async function getClients(page = 1, limit = 10, search?: string): Promise
   const total = filtered.length
   const start = (page - 1) * limit
   const data = filtered.slice(start, start + limit)
-  console.log(`Obteniendo clientes: page=${page}, limit=${limit}, search="${search}", total=${total}`)
-  console.log("Clientes filtrados:", data)
 
+  clients.push(...filtered)
   return {
     data,
     total,
@@ -140,7 +147,6 @@ export async function getClients(page = 1, limit = 10, search?: string): Promise
 }
 
 export async function getClientById(id: string): Promise<Client | null> {
-  // TODO: Reemplazar con query real
   return clients.find(c => c.id === id) || null
 }
 
@@ -157,7 +163,7 @@ export async function createNewClient(input: CreateClientInput, userId: string):
   console.log("Intentando crear cliente en Supabase con datos:", clientToInsert)
 
   try {
-    const { data, error } = await supabase
+    const {data, error} = await supabase
       .from('clients')
       .insert([clientToInsert])
       .select()
@@ -175,7 +181,6 @@ export async function createNewClient(input: CreateClientInput, userId: string):
 }
 
 export async function updateClient(input: UpdateClientInput): Promise<Client | null> {
-  // TODO: Reemplazar con UPDATE real
   const index = clients.findIndex(c => c.id === input.id)
   if (index === -1) return null
 
@@ -193,6 +198,7 @@ export async function updateClient(input: UpdateClientInput): Promise<Client | n
 
     const result = await supabase.from('clients').update(updatedClient).eq('id', input.id).single()
 
+    clients[index] = updatedClient;
     return result.data;
 
   } catch (error) {
@@ -206,7 +212,6 @@ export async function updateClient(input: UpdateClientInput): Promise<Client | n
 }
 
 export async function deleteClient(id: string): Promise<boolean> {
-  // TODO: Reemplazar con DELETE real
   const index = clients.findIndex(c => c.id === id)
   if (index === -1) return false
   try {
@@ -232,39 +237,48 @@ export async function deleteClient(id: string): Promise<boolean> {
 // =====================================================
 
 export async function getServices(page = 1, limit = 10, clientId?: string, status?: string): Promise<PaginatedResponse<ServiceWithClient>> {
-  // TODO: Reemplazar con query real con JOIN a clients
-  let filtered = [...services]
+  const from = (page - 1) * limit;
+  const to = from + limit - 1;
 
-  if (clientId) {
-    filtered = filtered.filter(s => s.client_id === clientId)
+  // 1. Construimos la query con JOIN
+  // 'client:client_id(*)' significa: trae los datos de la tabla vinculada por client_id
+  let query = supabase
+    .from('services')
+    .select(`
+      *,
+      client:client_id (id, name, email, phone),
+      service_type:service_type_id (id, name)
+    `, {count: 'exact'});
+
+  // 2. Aplicamos filtros de base de datos (no de JS)
+  if (clientId) query = query.eq('client_id', clientId);
+  if (status) query = query.eq('status', status);
+
+  const {data, error, count} = await query
+    .order('service_date', {ascending: false})
+    .range(from, to);
+
+  if (error) {
+    console.error("Error en Supabase:", error.message);
+    return {data: [], total: 0, page, limit, totalPages: 0};
   }
-
-  if (status) {
-    filtered = filtered.filter(s => s.status === status)
-  }
-
-  const total = filtered.length
-  const start = (page - 1) * limit
-  const data = filtered.slice(start, start + limit).map(s => ({
-    ...s,
-    client: clients.find(c => c.id === s.client_id)!,
-    service_type: serviceTypes.find(st => st.id === s.service_type_id),
-  }))
-
+  services.push(...(data as Service[]))
   return {
-    data,
-    total,
+    data: (data as any) || [],
+    total: count || 0,
     page,
     limit,
-    totalPages: Math.ceil(total / limit),
-  }
+    totalPages: Math.ceil((count || 0) / limit),
+  };
 }
 
 export async function getServiceById(id: string): Promise<ServiceWithClient | null> {
-  // TODO: Reemplazar con query real
-  const service = services.find(s => s.id === id)
-  if (!service) return null
-
+  const result = await supabase.from('services').select('*').eq('id', id).single()
+  if (result.error || !result.data) {
+    return null
+  }
+  const service = result.data
+  services.push(service)
   return {
     ...service,
     client: clients.find(c => c.id === service.client_id)!,
@@ -273,14 +287,11 @@ export async function getServiceById(id: string): Promise<ServiceWithClient | nu
 }
 
 export async function getServicesByClientId(clientId: string): Promise<Service[]> {
-  // TODO: Reemplazar con query real
   return services.filter(s => s.client_id === clientId)
 }
 
 export async function createService(input: CreateServiceInput, userId: string): Promise<Service> {
-  // TODO: Reemplazar con INSERT real
-  const newService: Service = {
-    id: String(services.length + 1),
+  const newService = {
     ...input,
     service_type_id: input.service_type_id || null,
     origin_city: input.origin_city || null,
@@ -293,52 +304,104 @@ export async function createService(input: CreateServiceInput, userId: string): 
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
-  services.push(newService)
-  return newService
+  const result = await supabase.from('services').insert([newService]).select().single()
+  if (result.error) {
+    console.error("Error al crear servicio en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo crear el servicio")
+  }
+  services.push(result.data as Service)
+  return result.data as Service
 }
 
 export async function updateService(input: UpdateServiceInput): Promise<Service | null> {
-  // TODO: Reemplazar con UPDATE real
-  const index = services.findIndex(s => s.id === input.id)
-  if (index === -1) return null
+  // 1. No busques en el array 'services'. Ve directo a Supabase.
+  // Preparamos los datos para actualizar (quitamos el ID del cuerpo para no intentar sobrescribirlo)
+  const {id, ...updateData} = input;
 
-  services[index] = {
-    ...services[index],
-    ...input,
+  const cleanData = Object.fromEntries(
+    Object.entries(updateData).map(([key, value]) => [
+      key,
+      value === "" ? null : value
+    ])
+  );
+
+  const dataToUpdate = {
+    ...cleanData,
     updated_at: new Date().toISOString(),
+  };
+
+
+  // 2. Realizamos la actualización
+  const {data, error} = await supabase
+    .from('services')
+    .update(dataToUpdate)
+    .eq('id', id)
+    .select() // Importante para que devuelva el objeto actualizado
+    .single();
+
+  if (error) {
+    console.error("Error al actualizar servicio en Supabase:", error.message);
+    // Si el error es que no existe la fila, retornamos null para el 404
+    if (error.code === 'PGRST116') return null;
+    throw new Error("No se pudo actualizar el servicio");
   }
-  return services[index]
+
+  // 3. (Opcional) Si necesitas mantener el array local sincronizado
+  const index = services.findIndex(s => s.id === id);
+  if (index !== -1) {
+    services[index] = data;
+  } else {
+    services.push(data);
+  }
+
+  return data as Service;
 }
 
 export async function deleteService(id: string): Promise<boolean> {
-  // TODO: Reemplazar con DELETE real
-  const index = services.findIndex(s => s.id === id)
-  if (index === -1) return false
-  services.splice(index, 1)
+  const result = await supabase.from('services').delete().eq('id', id).single()
+  if (result.error) {
+    console.error("Error al eliminar servicio en Supabase:", result.error.message, result.error.details)
+    return false
+  }
+  services.splice(services.findIndex(s => s.id === id), 1)
   return true
 }
 
 export async function getServiceTypes(): Promise<ServiceType[]> {
-  // TODO: Reemplazar con query real
-  return serviceTypes.filter(st => st.is_active)
+  const result = await supabase.from('service_types').select('*').order('name', {ascending: true})
+  if (result.error) {
+    console.error("Error al obtener tipos de servicio de Supabase:", result.error.message, result.error.details)
+    return []
+  }
+  return result.data || []
 }
 
 export async function getUpcomingServices(days = 30): Promise<ServiceWithClient[]> {
-  // TODO: Reemplazar con query real
   const today = new Date()
   const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000)
 
-  return services
-    .filter(s => {
-      const serviceDate = new Date(s.service_date)
-      return serviceDate >= today && serviceDate <= futureDate && s.status === 'scheduled'
-    })
-    .map(s => ({
-      ...s,
-      client: clients.find(c => c.id === s.client_id)!,
-      service_type: serviceTypes.find(st => st.id === s.service_type_id),
-    }))
-    .sort((a, b) => new Date(a.service_date).getTime() - new Date(b.service_date).getTime())
+  const result = await supabase
+    .from('services')
+    .select(`
+      *,  
+      client:client_id (id, name, email, phone),
+      service_type:service_type_id (id, name)
+    `)
+    .eq('status', 'scheduled')
+    .gte('service_date', today.toISOString().split('T')[0])
+    .lte('service_date', futureDate.toISOString().split('T')[0])
+    .order('service_date', {ascending: true})
+
+  if (result.error) {
+    console.error("Error al obtener servicios próximos de Supabase:", result.error.message, result.error.details)
+    return []
+  }
+
+  return (result.data as any[]).map(s => ({
+    ...s,
+    client: s.client,
+    service_type: s.service_type,
+  }))
 }
 
 // =====================================================
@@ -346,8 +409,19 @@ export async function getUpcomingServices(days = 30): Promise<ServiceWithClient[
 // =====================================================
 
 export async function getReminders(page = 1, limit = 10, status?: string): Promise<PaginatedResponse<ReminderWithClient>> {
-  // TODO: Reemplazar con query real con JOIN
-  let filtered = [...reminders]
+  let filtered = await supabase
+    .from('reminders')
+    .select('*')
+    .order('reminder_date', {ascending: false})
+    .range(page - 1, page * limit - 1)
+    .then(({data, error}) => {
+      if (error) {
+        console.error("Error al obtener recordatorios de Supabase:", error.message, error.details);
+        return [];
+      }
+      return data || [];
+    })
+
 
   if (status) {
     filtered = filtered.filter(r => r.status === status)
@@ -360,7 +434,7 @@ export async function getReminders(page = 1, limit = 10, status?: string): Promi
     client: clients.find(c => c.id === r.client_id)!,
     service: services.find(s => s.id === r.service_id),
   }))
-
+  reminders.push(...filtered)
   return {
     data,
     total,
@@ -383,21 +457,32 @@ export async function getReminderById(id: string): Promise<ReminderWithClient | 
 }
 
 export async function getPendingReminders(): Promise<ReminderWithClient[]> {
-  // TODO: Reemplazar con query real
   const today = new Date().toISOString().split('T')[0]
 
-  return reminders
-    .filter(r => r.status === 'pending' && r.reminder_date <= today)
-    .map(r => ({
-      ...r,
-      client: clients.find(c => c.id === r.client_id)!,
-      service: services.find(s => s.id === r.service_id),
-    }))
+  const result = await supabase
+    .from('reminders')
+    .select('*')
+    .eq('status', 'pending')
+    .lte('reminder_date', today)
+    .order('reminder_date', {ascending: true})
+    .then(({data, error}) => {
+      if (error) {
+        console.error("Error al obtener recordatorios pendientes de Supabase:", error.message, error.details);
+        return [];
+      }
+      return data || [];
+    })
+
+  return result.map(r => ({
+    ...r,
+    client: clients.find(c => c.id === r.client_id)!,
+    service: services.find(s => s.id === r.service_id),
+  }))
 }
 
 export async function createReminder(input: CreateReminderInput, userId: string): Promise<Reminder> {
   // TODO: Reemplazar con INSERT real
-  const newReminder: Reminder = {
+  const newReminder = {
     id: String(reminders.length + 1),
     ...input,
     service_id: input.service_id || null,
@@ -410,27 +495,47 @@ export async function createReminder(input: CreateReminderInput, userId: string)
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
-  reminders.push(newReminder)
-  return newReminder
+
+  const result = await supabase.from('reminders').insert([newReminder]).select().single()
+  if (result.error) {
+    console.error("Error al crear recordatorio en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo crear el recordatorio")
+  }
+  reminders.push(result.data as Reminder)
+  return result.data as Reminder
 }
 
 export async function updateReminder(input: UpdateReminderInput): Promise<Reminder | null> {
-  // TODO: Reemplazar con UPDATE real
   const index = reminders.findIndex(r => r.id === input.id)
   if (index === -1) return null
 
-  reminders[index] = {
+  const updatedReminder = {
     ...reminders[index],
     ...input,
+    service_id: input.service_id || reminders[index].service_id,
+    message: input.message || reminders[index].message,
+    send_email: input.send_email !== undefined ? input.send_email : reminders[index].send_email,
+    send_whatsapp: input.send_whatsapp !== undefined ? input.send_whatsapp : reminders[index].send_whatsapp,
+    status: input.status || reminders[index].status,
     updated_at: new Date().toISOString(),
   }
-  return reminders[index]
+  const result = await supabase.from('reminders').update(updatedReminder).eq('id', input.id).single()
+  if (result.error) {
+    console.error("Error al actualizar recordatorio en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo actualizar el recordatorio")
+  }
+  reminders[index] = updatedReminder
+  return result.data as Reminder;
 }
 
 export async function deleteReminder(id: string): Promise<boolean> {
-  // TODO: Reemplazar con DELETE real
   const index = reminders.findIndex(r => r.id === id)
   if (index === -1) return false
+  const result = await supabase.from('reminders').delete().eq('id', id).single()
+  if (result.error) {
+    console.error("Error al eliminar recordatorio en Supabase:", result.error.message, result.error.details)
+    return false
+  }
   reminders.splice(index, 1)
   return true
 }
@@ -440,13 +545,19 @@ export async function markReminderAsSent(id: string): Promise<Reminder | null> {
   const index = reminders.findIndex(r => r.id === id)
   if (index === -1) return null
 
-  reminders[index] = {
+  const updatedReminder: Reminder = {
     ...reminders[index],
     status: 'sent',
     sent_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
-  return reminders[index]
+  const result = await supabase.from('reminders').update(updatedReminder).eq('id', id).single()
+  if (result.error) {
+    console.error("Error al marcar recordatorio como enviado en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo actualizar el recordatorio")
+  }
+  reminders[index] = updatedReminder
+  return result.data as Reminder;
 }
 
 // =====================================================
@@ -457,28 +568,28 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const today = new Date().toISOString()
 
   // 1. Obtener conteos totales (usando la tabla real si es posible)
-  const { count: totalClients } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-  const { count: totalServices } = await supabase.from('services').select('*', { count: 'exact', head: true });
+  const {count: totalClients} = await supabase.from('clients').select('*', {count: 'exact', head: true});
+  const {count: totalServices} = await supabase.from('services').select('*', {count: 'exact', head: true});
 
   // 2. Remitentes pendientes
-  const { count: pendingReminders } = await supabase
+  const {count: pendingReminders} = await supabase
     .from('reminders')
-    .select('*', { count: 'exact', head: true })
+    .select('*', {count: 'exact', head: true})
     .eq('status', 'pending');
 
   // 3. Clientes recientes (CORRECCIÓN AQUÍ)
-  const { data: recentClientsData, error } = await supabase
+  const {data: recentClientsData, error} = await supabase
     .from('clients')
     .select('id, name, phone, email, city, created_at')
-    .order('created_at', { ascending: false })
+    .order('created_at', {ascending: false})
     .limit(5); // Eliminamos .single() porque queremos una lista
 
   if (error) {
     console.error("Error cargando clientes recientes:", error);
   }
 
-  const upcomingServices = await getUpcomingServices(14);
-  console.log(recentClientsData)
+  const upcomingServices = await getUpcomingServices(14); // Próximos 14 días
+  console.log(upcomingServices)
 
   return {
     totalClients: totalClients || 0,

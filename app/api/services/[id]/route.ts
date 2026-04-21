@@ -46,6 +46,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     const result = serviceSchema.partial().safeParse(body)
+    console.log('result', result)
 
     if (!result.success) {
       return NextResponse.json(
