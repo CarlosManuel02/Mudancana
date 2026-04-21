@@ -65,7 +65,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             <FieldLabel htmlFor="phone">Teléfono *</FieldLabel>
             <Input
               id="phone"
-              placeholder="+52 55 1234 5678"
+              placeholder=""
               {...register('phone')}
             />
             {errors.phone && <FieldError>{errors.phone.message}</FieldError>}
@@ -75,7 +75,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             <FieldLabel htmlFor="whatsapp">WhatsApp</FieldLabel>
             <Input
               id="whatsapp"
-              placeholder="+52 55 1234 5678"
+              placeholder=""
               {...register('whatsapp')}
             />
             {errors.whatsapp && <FieldError>{errors.whatsapp.message}</FieldError>}
@@ -87,7 +87,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             <FieldLabel htmlFor="address">Dirección</FieldLabel>
             <Input
               id="address"
-              placeholder="Av. Reforma 123, Col. Centro"
+              placeholder="Calle, número"
               {...register('address')}
             />
             {errors.address && <FieldError>{errors.address.message}</FieldError>}
@@ -97,7 +97,7 @@ export function ClientForm({ client, onSubmit, onCancel, isLoading }: ClientForm
             <FieldLabel htmlFor="city">Ciudad</FieldLabel>
             <Input
               id="city"
-              placeholder="Ciudad de México"
+              placeholder="Ciudad"
               {...register('city')}
             />
             {errors.city && <FieldError>{errors.city.message}</FieldError>}

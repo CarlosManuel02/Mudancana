@@ -102,7 +102,7 @@ export function ServiceForm({ service, clients, serviceTypes, onSubmit, onCancel
             <FieldLabel htmlFor="origin_address">Dirección de origen *</FieldLabel>
             <Input
               id="origin_address"
-              placeholder="Av. Reforma 123, Col. Centro"
+              placeholder="Calle Reforma 123, Centro"
               {...register('origin_address')}
             />
             {errors.origin_address && <FieldError>{errors.origin_address.message}</FieldError>}
@@ -112,7 +112,7 @@ export function ServiceForm({ service, clients, serviceTypes, onSubmit, onCancel
             <FieldLabel htmlFor="origin_city">Ciudad de origen</FieldLabel>
             <Input
               id="origin_city"
-              placeholder="Ciudad de México"
+              placeholder="Santo Domingo"
               {...register('origin_city')}
             />
           </Field>
@@ -123,7 +123,7 @@ export function ServiceForm({ service, clients, serviceTypes, onSubmit, onCancel
             <FieldLabel htmlFor="destination_address">Dirección de destino *</FieldLabel>
             <Input
               id="destination_address"
-              placeholder="Calle Palmas 456, Polanco"
+              placeholder="Avenida Insurgentes 456, Roma"
               {...register('destination_address')}
             />
             {errors.destination_address && <FieldError>{errors.destination_address.message}</FieldError>}
@@ -133,7 +133,7 @@ export function ServiceForm({ service, clients, serviceTypes, onSubmit, onCancel
             <FieldLabel htmlFor="destination_city">Ciudad de destino</FieldLabel>
             <Input
               id="destination_city"
-              placeholder="Ciudad de México"
+              placeholder="Santiago"
               {...register('destination_city')}
             />
           </Field>
