@@ -60,6 +60,18 @@ export const updateReminderSchema = reminderSchema.partial().extend({
   status: z.enum(['pending', 'sent', 'dismissed']).optional(),
 })
 
+// Configuración
+export const settingSchema = z.object({
+  value: z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null()
+  ]).optional(),
+  description: z.string().optional()
+})
+
+
 // Tipos inferidos
 export type LoginInput = z.infer<typeof loginSchema>
 export type ClientInput = z.infer<typeof clientSchema>

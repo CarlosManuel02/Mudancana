@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import {useEffect, useState} from 'react'
+import useSWR from 'swr'
 import { 
   Settings, 
   Building2, 
@@ -25,6 +26,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs'
 
+const fetcher = (url:string) => fetch(url).then(r => r.json())
+
 export default function ConfiguracionPage() {
   const [companySettings, setCompanySettings] = useState({
     name: 'Mi Empresa de Mudanzas',
@@ -41,16 +44,73 @@ export default function ConfiguracionPage() {
 
   const [isSaving, setIsSaving] = useState(false)
 
+  const { data, mutate } = useSWR('/api/settings', fetcher)
+
+  useEffect(() => {
+    if (!data?.data) return
+
+    const map = Object.fromEntries(
+      data.data.map((item:any) => [item.key, item.value])
+    )
+
+    setCompanySettings({
+      name: map.company_name || '',
+      email: map.company_email || '',
+      phone: map.company_phone || '',
+      address: map.company_address || '',
+    })
+
+    setReminderSettings({
+      daysBefore: Number(map.reminder_days_before || 7),
+      emailEnabled: map.email_enabled === 'true',
+      whatsappEnabled: map.whatsapp_enabled === 'true',
+    })
+  }, [data])
+
   const handleSaveCompany = async () => {
     setIsSaving(true)
-    // Simular guardado
-    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    const entries = [
+      ['company_name', companySettings.name],
+      ['company_email', companySettings.email],
+      ['company_phone', companySettings.phone],
+      ['company_address', companySettings.address],
+    ]
+
+    await Promise.all(
+      entries.map(([key, value]) =>
+        fetch(`/api/settings/${key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+        })
+      )
+    )
+
+    mutate()
     setIsSaving(false)
   }
 
   const handleSaveReminders = async () => {
     setIsSaving(true)
-    await new Promise(resolve => setTimeout(resolve, 1000))
+
+    const entries = [
+      ['reminder_days_before', reminderSettings.daysBefore],
+      ['email_enabled', reminderSettings.emailEnabled],
+      ['whatsapp_enabled', reminderSettings.whatsappEnabled],
+    ]
+
+    await Promise.all(
+      entries.map(([key, value]) =>
+        fetch(`/api/settings/${key}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ value }),
+        })
+      )
+    )
+
+    mutate()
     setIsSaving(false)
   }
 

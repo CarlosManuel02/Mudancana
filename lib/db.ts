@@ -605,17 +605,66 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 // FUNCIONES DE CONFIGURACIÓN
 // =====================================================
 
-export async function getSettings(): Promise<Setting[]> {
-  // TODO: Reemplazar con query real
-  return []
+export async function getSettings() {
+  const result = await supabase.from('settings').select('*').order('key', {ascending: true})
+  if (result.error) {
+    console.error("Error al obtener configuraciones de Supabase:", result.error.message, result.error.details)
+    return []
+  }
+  return result.data || []
 }
 
-export async function getSetting(key: string): Promise<string | null> {
-  // TODO: Reemplazar con query real
-  return null
+export async function getSettingByKey(key: string) {
+  const result = await supabase.from('settings').select('*').eq('key', key).single()
+  if (result.error) {
+    console.error("Error al obtener configuración por clave de Supabase:", result.error.message, result.error.details)
+    return null
+  }
+  return result.data || null
 }
 
-export async function updateSetting(key: string, value: string): Promise<boolean> {
-  // TODO: Reemplazar con UPDATE real
+export async function upsertSetting(
+  key: string,
+  value: string,
+  description?: string
+) {
+  const existing = await getSettingByKey(key)
+
+  const settingData = {
+    key,
+    value,
+    description: description || null,
+    updated_at: new Date().toISOString(),
+  }
+  console.log(`Intentando ${existing ? 'actualizar' : 'crear'} configuración en Supabase con datos:`, settingData)
+
+  if (existing) {
+    // UPDATE
+    const result = await supabase.from('settings').update(settingData).eq('key', key).select().single()
+    if (result.error) {
+      console.error("Error al actualizar configuración en Supabase:", result.error.message, result.error.details)
+      throw new Error("No se pudo actualizar la configuración")
+    }
+    return result.data
+  } else {
+    // INSERT
+    const newSetting = {
+      ...settingData,
+    }
+    const result = await supabase.from('settings').insert([newSetting]).select().single()
+    if (result.error) {
+      console.error("Error al crear configuración en Supabase:", result.error.message, result.error.details)
+      throw new Error("No se pudo crear la configuración")
+    }
+    return result.data
+  }
+}
+
+export async function deleteSetting(key: string) {
+  const result = await supabase.from('settings').delete().eq('key', key).single()
+  if (result.error) {
+    console.error("Error al eliminar configuración en Supabase:", result.error.message, result.error.details)
+    return false
+  }
   return true
 }
