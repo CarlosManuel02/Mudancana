@@ -16,6 +16,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Dialog,
   DialogContent,
@@ -76,6 +78,9 @@ export default function ServiciosPage() {
   const [editingService, setEditingService] = useState<Service | null>(null)
   const [deletingService, setDeletingService] = useState<ServiceWithClient | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isTypeModalOpen, setIsTypeModalOpen] = useState(false)
+  const [typeName, setTypeName] = useState('')
+  const [editingType, setEditingType] = useState<ServiceType | null>(null)
 
   const { data, error, isLoading, mutate } = useSWR<{ 
     success: boolean
@@ -142,6 +147,51 @@ export default function ServiciosPage() {
     }
   }
 
+
+  const openNewType = () => {
+    setEditingType(null)
+    setTypeName('')
+  }
+
+  const editType = (type: ServiceType) => {
+    setEditingType(type)
+    setTypeName(type.name)
+  }
+
+  const saveType = async () => {
+    const url = editingType
+      ? `/api/service-types/${editingType.id}`
+      : '/api/service-types'
+
+    const method = editingType ? 'PUT' : 'POST'
+
+    const response = await fetch(url, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: typeName,
+      }),
+    })
+
+    if (response.ok) {
+      setTypeName('')
+      setEditingType(null)
+      mutate()
+    }
+  }
+
+  const removeType = async (id: string) => {
+    const response = await fetch(`/api/service-types/${id}`, {
+      method: 'DELETE',
+    })
+
+    if (response.ok) {
+      mutate()
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -150,10 +200,19 @@ export default function ServiciosPage() {
           <h1 className="text-2xl font-bold text-foreground">Servicios</h1>
           <p className="text-muted-foreground">Gestiona las mudanzas y servicios</p>
         </div>
-        <Button onClick={handleCreate}>
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Servicio
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setIsTypeModalOpen(true)}
+          >
+            Tipos de Servicio
+          </Button>
+
+          <Button onClick={handleCreate}>
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Servicio
+          </Button>
+        </div>
       </div>
 
       {/* Filtros */}
@@ -345,6 +404,64 @@ export default function ServiciosPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={isTypeModalOpen}
+        onOpenChange={setIsTypeModalOpen}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Tipos de Servicio</DialogTitle>
+            <DialogDescription>
+              Administra los tipos disponibles
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              <input
+                value={typeName}
+                onChange={(e) => setTypeName(e.target.value)}
+                placeholder="Ej: Mudanza Express"
+                className="w-full border rounded-md px-3 py-2"
+              />
+
+              <Button onClick={saveType}>
+                {editingType ? 'Actualizar' : 'Guardar'}
+              </Button>
+            </div>
+
+            <div className="space-y-2 max-h-80 overflow-y-auto">
+              {data?.serviceTypes?.map((type) => (
+                <div
+                  key={type.id}
+                  className="flex items-center justify-between border rounded-lg p-3"
+                >
+                  <span>{type.name}</span>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => editType(type)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => removeType(type.id)}
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

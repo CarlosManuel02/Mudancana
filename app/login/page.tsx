@@ -121,19 +121,6 @@ export default function LoginPage() {
                 </Button>
               </FieldGroup>
             </form>
-
-            {/* Credenciales de demo */}
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <p className="text-xs font-medium text-muted-foreground mb-2">
-                Credenciales de prueba:
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Email: <span className="font-mono text-foreground">admin@empresa.com</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Password: <span className="font-mono text-foreground">admin123</span>
-              </p>
-            </div>
           </CardContent>
         </Card>
       </div>

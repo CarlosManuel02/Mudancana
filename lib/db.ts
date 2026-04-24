@@ -483,6 +483,49 @@ export async function getServiceTypes(): Promise<ServiceType[]> {
   return result.data || []
 }
 
+export async function getServiceTypeById(id: string): Promise<ServiceType | null> {
+  const result = await supabase.from('service_types').select('*').eq('id', id).single()
+  if (result.error || !result.data) {
+    return null
+  }
+  return result.data
+
+}
+
+
+export async function createServiceType(name: string): Promise<ServiceType> {
+  const newType = {
+    name,
+    created_at: new Date().toISOString(),
+  }
+  const result = await supabase.from('service_types').insert([newType]).select().single()
+  if (result.error) {
+    console.error("Error al crear tipo de servicio en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo crear el tipo de servicio")
+  }
+  return result.data as ServiceType
+}
+
+export async function updateServiceType(id: string, name: string): Promise<ServiceType | null> {
+  const result = await supabase.from('service_types').update({name, updated_at: new Date().toISOString()}).eq('id', id).select().single()
+  if (result.error) {
+    console.error("Error al actualizar tipo de servicio en Supabase:", result.error.message, result.error.details)
+    throw new Error("No se pudo actualizar el tipo de servicio")
+  }
+  return result.data as ServiceType
+}
+
+export async function deleteServiceType(id: string): Promise<boolean> {
+  const result = await supabase.from('service_types').delete().eq('id', id).single()
+  if (result.error) {
+    console.error("Error al eliminar tipo de servicio en Supabase:", result.error.message, result.error.details)
+    return false
+  }
+  return true
+}
+
+
+
 export async function getUpcomingServices(days = 30): Promise<ServiceWithClient[]> {
   const today = new Date()
   const futureDate = new Date(today.getTime() + days * 24 * 60 * 60 * 1000)
