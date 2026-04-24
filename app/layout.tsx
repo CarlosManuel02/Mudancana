@@ -1,11 +1,12 @@
-import type { Metadata } from 'next'
-import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
-import { AuthProvider } from '@/lib/auth-context'
+import type {Metadata} from 'next'
+import {Geist, Geist_Mono} from 'next/font/google'
+import {Analytics} from '@vercel/analytics/next'
+import {AuthProvider} from '@/lib/auth-context'
 import './globals.css'
+import {ThemeProvider} from "next-themes";
 
-const _geist = Geist({ subsets: ["latin"] });
-const _geistMono = Geist_Mono({ subsets: ["latin"] });
+const _geist = Geist({subsets: ["latin"]});
+const _geistMono = Geist_Mono({subsets: ["latin"]});
 
 export const metadata: Metadata = {
   title: 'Mudancana - Sistema de Gestión',
@@ -31,17 +32,24 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({
-  children,
-}: Readonly<{
+                                     children,
+                                   }: Readonly<{
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className="bg-background">
-      <body className="font-sans antialiased">
+    <html lang="es" className="bg-background" suppressHydrationWarning>
+    <body className="font-sans antialiased">
+      <ThemeProvider
+        attribute="class"
+        defaultTheme="system"
+        enableSystem
+      >
         <AuthProvider>
           {children}
         </AuthProvider>
         {process.env.NODE_ENV === 'production' && <Analytics />}
+      </ThemeProvider>
+
       </body>
     </html>
   )

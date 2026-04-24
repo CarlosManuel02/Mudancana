@@ -26,6 +26,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/lib/auth-context'
 import { cn } from '@/lib/utils'
+import { ThemeProvider } from '@/components/theme-provider'
+import {ThemeToggle} from "@/components/theme-toggle";
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -197,18 +199,30 @@ export default function DashboardLayout({
                   </AvatarFallback>
                 </Avatar>
                 <span className="hidden md:inline-block text-sm font-medium">
-                  {user.name}
-                </span>
+        {user.name}
+      </span>
                 <ChevronDown className="w-4 h-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
+
             <DropdownMenuContent align="end" className="w-48">
               <div className="px-2 py-1.5">
                 <p className="text-sm font-medium">{user.name}</p>
                 <p className="text-xs text-muted-foreground">{user.email}</p>
               </div>
+
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-destructive">
+
+              <div className="px-2 py-1">
+                <ThemeToggle />
+              </div>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="text-destructive"
+              >
                 <LogOut className="w-4 h-4 mr-2" />
                 Cerrar sesión
               </DropdownMenuItem>
