@@ -5,52 +5,30 @@ import {AuthProvider} from '@/lib/auth-context'
 import './globals.css'
 import {ThemeProvider} from "next-themes";
 
-const _geist = Geist({subsets: ["latin"]});
-const _geistMono = Geist_Mono({subsets: ["latin"]});
+
+const geist = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
+const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
   title: 'Mudancana - Sistema de Gestión',
   description: 'Sistema de seguimiento de clientes y servicios de mudanzas',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
 }
 
-export default function RootLayout({
-                                     children,
-                                   }: Readonly<{
-  children: React.ReactNode
-}>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="bg-background" suppressHydrationWarning>
-    <body className="font-sans antialiased">
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-      >
-        <AuthProvider>
-          {children}
-        </AuthProvider>
-        {process.env.NODE_ENV === 'production' && <Analytics />}
-      </ThemeProvider>
-
-      </body>
+    <html lang="es" suppressHydrationWarning>
+    <body className={`${geist.variable} ${geistMono.variable} font-sans antialiased bg-background text-foreground`}>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+      storageKey="mudancana-theme"
+    >
+      <AuthProvider>{children}</AuthProvider>
+      {process.env.NODE_ENV === 'production' && <Analytics />}
+    </ThemeProvider>
+    </body>
     </html>
   )
 }
