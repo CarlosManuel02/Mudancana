@@ -3,16 +3,17 @@
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { 
-  LayoutDashboard, 
-  Users, 
-  Truck, 
-  Bell, 
-  Settings, 
+import {
+  LayoutDashboard,
+  Users,
+  Truck,
+  Bell,
+  Settings,
   LogOut,
   Menu,
   X,
-  ChevronDown
+  ChevronDown,
+  UserCog
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -31,24 +32,38 @@ const navigation = [
   { name: 'Clientes', href: '/clientes', icon: Users },
   { name: 'Servicios', href: '/servicios', icon: Truck },
   { name: 'Recordatorios', href: '/recordatorios', icon: Bell },
+  { name: 'Usuarios', href: '/usuarios', icon: UserCog, adminOnly: true },
   { name: 'Configuración', href: '/configuracion', icon: Settings },
 ]
 
 export default function DashboardLayout({
-  children,
-}: {
+                                          children,
+                                        }: {
   children: React.ReactNode
 }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user, isLoading, logout } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const visibleNavigation = navigation.filter(
+    (item) => !item.adminOnly || user?.role === 'admin'
+  )
 
   useEffect(() => {
     if (!isLoading && !user) {
       router.push('/login')
+      return
     }
-  }, [user, isLoading, router])
+
+    if (
+      !isLoading &&
+      user &&
+      pathname.startsWith('/usuarios') &&
+      user.role !== 'admin'
+    ) {
+      router.push('/dashboard')
+    }
+  }, [user, isLoading, router, pathname])
 
   if (isLoading) {
     return (
@@ -101,7 +116,7 @@ export default function DashboardLayout({
             </div>
             <nav className="flex-1 px-4 py-4">
               <ul className="space-y-1">
-                {navigation.map((item) => {
+                {visibleNavigation.map((item) => {
                   const isActive = pathname === item.href
                   return (
                     <li key={item.name}>
@@ -137,7 +152,7 @@ export default function DashboardLayout({
         </div>
         <nav className="flex-1 px-4 py-4">
           <ul className="space-y-1">
-            {navigation.map((item) => {
+            {visibleNavigation.map((item) => {
               const isActive = pathname === item.href
               return (
                 <li key={item.name}>

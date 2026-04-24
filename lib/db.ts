@@ -23,6 +23,7 @@ import type {
   UpdateServiceInput,
   User,
 } from './types'
+import bycrypt from 'bcryptjs'
 
 // =====================================================
 // CONFIGURA TU CONEXIÓN A LA BASE DE DATOS AQUÍ
@@ -94,6 +95,112 @@ export async function getUserById(id: string): Promise<User | null> {
     created_at: data.created_at,
     updated_at: data.updated_at,
   }
+}
+
+export async function getAllUsers(): Promise<User[]> {
+  const {data, error} = await supabase.from('users').select('*').order('created_at', {ascending: true})
+  if (error) {
+    console.error("Error al obtener usuarios de Supabase:", error.message, error.details)
+    return []
+  }
+  return (data as any[]).map(u => ({
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    is_active: u.is_active,
+    created_at: u.created_at,
+    updated_at: u.updated_at,
+  }))
+}
+
+export async function createUser(input: {
+  name: string
+  email: string
+  password: string
+  role: 'admin' | 'employee'
+}): Promise<User> {
+  const newUser = {
+    name: input.name,
+    email: input.email.trim().toLowerCase(),
+    role: input.role,
+    is_active: true,
+    password_hash: input.password,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
+
+  const {data, error} = await supabase
+    .from('users')
+    .insert([newUser])
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error al crear usuario en Supabase:', error.message, error.details)
+    throw new Error('No se pudo crear el usuario')
+  }
+
+  users.push(data as User)
+  return data as User
+}
+
+
+export async function updateUser(
+  id: string,
+  input: Partial<{
+    name: string
+    email: string
+    password: string
+    role: 'admin' | 'employee'
+  }>
+): Promise<User | null> {
+  const existingUser = await getUserById(id)
+  if (!existingUser) return null
+
+  const updatedUser: any = {
+    name: input.name ?? existingUser.name,
+    email: input.email
+      ? input.email.trim().toLowerCase()
+      : existingUser.email,
+    role: input.role ?? existingUser.role,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (input.password) {
+    updatedUser.password_hash = input.password
+  }
+
+  const {data, error} = await supabase
+    .from('users')
+    .update(updatedUser)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error al actualizar usuario:', error.message, error.details)
+    throw new Error('No se pudo actualizar el usuario')
+  }
+
+  return data as User
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  const existingUser = await getUserById(id)
+  if (!existingUser) return false
+
+  const {error} = await supabase.from('users').delete().eq('id', id).single()
+  if (error) {
+    console.error("Error al eliminar usuario en Supabase:", error.message, error.details)
+    return false
+  }
+
+  const index = users.findIndex(u => u.id === id)
+  if (index !== -1) {
+    users.splice(index, 1)
+  }
+  return true
 }
 
 export async function getUserPasswordHash(email: string): Promise<string | null> {

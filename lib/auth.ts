@@ -12,10 +12,7 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  console.log('Verifying password:', password, 'against hash:', hash) // Debugging line
-  console.log('bcrypt.compare result:', await bcrypt.compare(password, hash)) // Debugging line
   return bcrypt.compare(password, hash)
-  // return password === 'admin123' // Para desarrollo, compara con la contraseña en texto plano
 }
 
 export function generateToken(user: AuthUser): string {
@@ -42,19 +39,16 @@ export function verifyToken(token: string): AuthUser | null {
 
 export async function login(email: string, password: string): Promise<Session | null> {
   const user = await getUserByEmail(email)
-  console.log('User found for email', email, ':', user) // Debugging line
   if (!user || !user.is_active) {
     return null
   }
 
   const passwordHash = await getUserPasswordHash(email)
-  console.warn('Password hash for', email, ':', passwordHash) // Debugging line
   if (!passwordHash) {
     return null
   }
 
   const isValid = await verifyPassword(password, passwordHash)
-  console.log('Password valid for', email, ':', isValid) // Debugging line
   if (!isValid) {
     return null
   }
